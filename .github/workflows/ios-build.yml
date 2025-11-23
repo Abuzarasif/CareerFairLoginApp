@@ -23,10 +23,13 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
       
-    - name: Create Xcode Project Structure
+    - name: Install XcodeGen
       run: |
-        # Create the Xcode project directory
-        mkdir -p CareerFairLoginApp.xcodeproj
+        brew install xcodegen
+        
+    - name: Organize Project Structure
+      run: |
+        # Create the app directory structure
         mkdir -p CareerFairLoginApp
         
         # Move Swift files to the app directory
@@ -34,27 +37,26 @@ jobs:
         mv Models CareerFairLoginApp/ 2>/dev/null || true
         mv Views CareerFairLoginApp/ 2>/dev/null || true
         
-    - name: Create Info.plist
-      run: |
+        # Create Info.plist
         cat > CareerFairLoginApp/Info.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
             <key>CFBundleDevelopmentRegion</key>
-            <string>$(DEVELOPMENT_LANGUAGE)</string>
+            <string>en</string>
             <key>CFBundleDisplayName</key>
             <string>CareerFairLoginApp</string>
             <key>CFBundleExecutable</key>
-            <string>$(EXECUTABLE_NAME)</string>
+            <string>\$(EXECUTABLE_NAME)</string>
             <key>CFBundleIdentifier</key>
-            <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+            <string>\$(PRODUCT_BUNDLE_IDENTIFIER)</string>
             <key>CFBundleInfoDictionaryVersion</key>
             <string>6.0</string>
             <key>CFBundleName</key>
-            <string>$(PRODUCT_NAME)</string>
+            <string>\$(PRODUCT_NAME)</string>
             <key>CFBundlePackageType</key>
-            <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+            <string>\$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
             <key>CFBundleShortVersionString</key>
             <string>1.0</string>
             <key>CFBundleVersion</key>
@@ -82,23 +84,81 @@ jobs:
         </plist>
         EOF
         
-    - name: Verify Swift Files Exist
+    - name: Generate Xcode Project
       run: |
-        echo "Checking Swift files..."
-        find . -name "*.swift" -type f | head -20
+        xcodegen generate
         
-    - name: Build with Swift Compiler (Syntax Check)
+    - name: List Available Simulators
       run: |
-        cd CareerFairLoginApp
-        echo "Checking Swift syntax..."
-        for file in *.swift Views/*.swift Models/*.swift; do
-          if [ -f "$file" ]; then
-            echo "Checking: $file"
-            swiftc -typecheck "$file" -sdk $(xcrun --show-sdk-path --sdk iphonesimulator) -target arm64-apple-ios16.0-simulator 2>&1 || echo "Note: Full compilation requires Xcode project"
-          fi
-        done
+        xcrun simctl list devices available
         
-    - name: List Project Structure
+    - name: Get Simulator Device
       run: |
-        echo "=== Project Structure ==="
-        tree -L 3 -I '.git' || find . -type f -name "*.swift" | head -20
+        DEVICE=$(xcrun simctl list devices available | grep "iPhone" | grep -v "unavailable" | head -1 | sed 's/.*(\([^)]*\)).*/\1/' | tr -d ' ')
+        if [ -z "$DEVICE" ]; then
+          DEVICE="iPhone 15"
+        fi
+        echo "DEVICE_ID=$DEVICE" >> $GITHUB_ENV
+        echo "Using device: $DEVICE"
+        
+    - name: Boot Simulator
+      run: |
+        xcrun simctl boot "$DEVICE_ID" || true
+        
+    - name: Build App
+      run: |
+        xcodebuild clean build \
+          -project CareerFairLoginApp.xcodeproj \
+          -scheme CareerFairLoginApp \
+          -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+          -derivedDataPath ./build \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+        
+    - name: Install App on Simulator
+      run: |
+        # Find the built app in derived data
+        APP_PATH=$(find ./build -name "CareerFairLoginApp.app" -type d | head -1)
+        if [ -z "$APP_PATH" ]; then
+          echo "App not found, searching all locations..."
+          find . -name "*.app" -type d
+          exit 1
+        fi
+        echo "Installing app from: $APP_PATH"
+        xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+        
+    - name: Launch App and Take Screenshots
+      run: |
+        # Launch the app
+        xcrun simctl launch "$DEVICE_ID" com.hkbu.CareerFairLoginApp
+        
+        # Wait for app to load
+        sleep 5
+        
+        # Create screenshots directory
+        mkdir -p screenshots
+        
+        # Take screenshot of the app
+        xcrun simctl io "$DEVICE_ID" screenshot screenshots/login-screen.png
+        
+        # Wait a bit more and take another screenshot
+        sleep 2
+        xcrun simctl io "$DEVICE_ID" screenshot screenshots/app-running.png
+        
+        echo "Screenshots saved!"
+        ls -la screenshots/
+        
+    - name: Upload Screenshots
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: app-screenshots
+        path: screenshots/
+        retention-days: 30
+        
+    - name: Build Summary
+      run: |
+        echo "✅ Build completed successfully!"
+        echo "📱 Screenshots are available in the Artifacts section"
+        echo "🔍 Check the 'app-screenshots' artifact to see your app running"

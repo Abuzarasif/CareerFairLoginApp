@@ -146,26 +146,30 @@ jobs:
           echo "Simulator is booted and ready"
         fi
         
+    - name: List Available Destinations
+      run: |
+        echo "=== Available destinations for scheme ==="
+        xcodebuild -project CareerFairLoginApp.xcodeproj \
+          -scheme CareerFairLoginApp \
+          -showdestinations || true
+        
     - name: Build App
       run: |
-        # Use generic destination first (more reliable), fallback to specific device
-        echo "Building app for iOS Simulator..."
+        # Use SDK directly instead of destination (more reliable)
+        echo "Building app for iOS Simulator using SDK..."
+        SDK_PATH=$(xcrun --show-sdk-path --sdk iphonesimulator)
+        echo "Using SDK: $SDK_PATH"
+        
         xcodebuild clean build \
           -project CareerFairLoginApp.xcodeproj \
           -scheme CareerFairLoginApp \
-          -destination "generic/platform=iOS Simulator" \
+          -sdk iphonesimulator \
           -derivedDataPath ./build \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          || xcodebuild clean build \
-          -project CareerFairLoginApp.xcodeproj \
-          -scheme CareerFairLoginApp \
-          -destination "platform=iOS Simulator,name=$DEVICE_NAME" \
-          -derivedDataPath ./build \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
+          ARCHS=arm64 \
+          VALID_ARCHS=arm64
         
     - name: Install App on Simulator
       run: |

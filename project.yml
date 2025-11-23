@@ -3,6 +3,15 @@ options:
   bundleIdPrefix: com.hkbu
   deploymentTarget:
     iOS: "16.0"
+  developmentLanguage: en
+schemes:
+  CareerFairLoginApp:
+    build:
+      targets:
+        CareerFairLoginApp: all
+    run:
+      config: Debug
+      simulator: true
 targets:
   CareerFairLoginApp:
     type: application
@@ -13,3 +22,5 @@ targets:
       PRODUCT_BUNDLE_IDENTIFIER: com.hkbu.CareerFairLoginApp
       INFOPLIST_FILE: CareerFairLoginApp/Info.plist
       SWIFT_VERSION: "5.0"
+      SUPPORTED_PLATFORMS: "iphonesimulator iphoneos"
+      TARGETED_DEVICE_FAMILY: "1"

@@ -94,33 +94,74 @@ jobs:
         
     - name: Get Simulator Device
       run: |
-        # Pick the first available iPhone simulator
-        LINE=$(xcrun simctl list devices available | grep "iPhone" | head -1)
-        echo "Raw device line: $LINE"
-
-        # Extract UDID (second () group) and name (text before first ()
-        DEVICE_UDID=$(echo "$LINE" | awk -F '[()]' '{print $2}')
-        DEVICE_NAME=$(echo "$LINE" | cut -d '(' -f1 | xargs)
-
-        if [ -z "$DEVICE_UDID" ]; then
-          echo "Failed to detect simulator UDID"
+        # List all available iPhone simulators
+        echo "=== Available iPhone Simulators ==="
+        xcrun simctl list devices available | grep "iPhone" || true
+        
+        # Get the first available iPhone simulator with its UDID
+        # Format: "iPhone 15 Pro (ACC081A3-2F62-4A76-8E0E-FC3A612D1AE7) (Available)"
+        DEVICE_INFO=$(xcrun simctl list devices available | grep "iPhone" | grep "Available" | head -1)
+        
+        if [ -z "$DEVICE_INFO" ]; then
+          echo "No available iPhone simulators found, trying any iPhone..."
+          DEVICE_INFO=$(xcrun simctl list devices available | grep "iPhone" | head -1)
+        fi
+        
+        if [ -z "$DEVICE_INFO" ]; then
+          echo "ERROR: No iPhone simulators found!"
+          xcrun simctl list devices
           exit 1
         fi
-
+        
+        echo "Selected device line: $DEVICE_INFO"
+        
+        # Extract UDID (between parentheses)
+        DEVICE_UDID=$(echo "$DEVICE_INFO" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
+        # Extract name (text before first parenthesis, trimmed)
+        DEVICE_NAME=$(echo "$DEVICE_INFO" | cut -d '(' -f1 | xargs)
+        
+        if [ -z "$DEVICE_UDID" ]; then
+          echo "ERROR: Failed to extract simulator UDID"
+          exit 1
+        fi
+        
         echo "DEVICE_UDID=$DEVICE_UDID" >> $GITHUB_ENV
         echo "DEVICE_NAME=$DEVICE_NAME" >> $GITHUB_ENV
-        echo "Using device: $DEVICE_NAME ($DEVICE_UDID)"
+        echo "Using device: $DEVICE_NAME (UDID: $DEVICE_UDID)"
         
     - name: Boot Simulator
       run: |
-        xcrun simctl boot "$DEVICE_UDID" || true
+        echo "Booting simulator $DEVICE_UDID..."
+        xcrun simctl boot "$DEVICE_UDID" 2>&1 || echo "Simulator may already be booted"
+        
+        # Wait for simulator to be fully ready
+        echo "Waiting for simulator to be ready..."
+        sleep 5
+        
+        # Verify simulator is booted
+        BOOT_STATUS=$(xcrun simctl list devices | grep "$DEVICE_UDID" | grep -o "Booted" || echo "")
+        if [ -z "$BOOT_STATUS" ]; then
+          echo "Warning: Simulator may not be fully booted, but continuing..."
+        else
+          echo "Simulator is booted and ready"
+        fi
         
     - name: Build App
       run: |
+        # Use generic destination first (more reliable), fallback to specific device
+        echo "Building app for iOS Simulator..."
         xcodebuild clean build \
           -project CareerFairLoginApp.xcodeproj \
           -scheme CareerFairLoginApp \
-          -destination "platform=iOS Simulator,id=$DEVICE_UDID" \
+          -destination "generic/platform=iOS Simulator" \
+          -derivedDataPath ./build \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          || xcodebuild clean build \
+          -project CareerFairLoginApp.xcodeproj \
+          -scheme CareerFairLoginApp \
+          -destination "platform=iOS Simulator,name=$DEVICE_NAME" \
           -derivedDataPath ./build \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \

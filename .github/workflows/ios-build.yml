@@ -94,23 +94,33 @@ jobs:
         
     - name: Get Simulator Device
       run: |
-        DEVICE=$(xcrun simctl list devices available | grep "iPhone" | grep -v "unavailable" | head -1 | sed 's/.*(\([^)]*\)).*/\1/' | tr -d ' ')
-        if [ -z "$DEVICE" ]; then
-          DEVICE="iPhone 15"
+        # Pick the first available iPhone simulator
+        LINE=$(xcrun simctl list devices available | grep "iPhone" | head -1)
+        echo "Raw device line: $LINE"
+
+        # Extract UDID (second () group) and name (text before first ()
+        DEVICE_UDID=$(echo "$LINE" | awk -F '[()]' '{print $2}')
+        DEVICE_NAME=$(echo "$LINE" | cut -d '(' -f1 | xargs)
+
+        if [ -z "$DEVICE_UDID" ]; then
+          echo "Failed to detect simulator UDID"
+          exit 1
         fi
-        echo "DEVICE_ID=$DEVICE" >> $GITHUB_ENV
-        echo "Using device: $DEVICE"
+
+        echo "DEVICE_UDID=$DEVICE_UDID" >> $GITHUB_ENV
+        echo "DEVICE_NAME=$DEVICE_NAME" >> $GITHUB_ENV
+        echo "Using device: $DEVICE_NAME ($DEVICE_UDID)"
         
     - name: Boot Simulator
       run: |
-        xcrun simctl boot "$DEVICE_ID" || true
+        xcrun simctl boot "$DEVICE_UDID" || true
         
     - name: Build App
       run: |
         xcodebuild clean build \
           -project CareerFairLoginApp.xcodeproj \
           -scheme CareerFairLoginApp \
-          -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+          -destination "platform=iOS Simulator,id=$DEVICE_UDID" \
           -derivedDataPath ./build \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
@@ -126,26 +136,26 @@ jobs:
           exit 1
         fi
         echo "Installing app from: $APP_PATH"
-        xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+        xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
         
     - name: Launch App and Take Screenshots
       run: |
         # Launch the app
-        xcrun simctl launch "$DEVICE_ID" com.hkbu.CareerFairLoginApp
-        
+        xcrun simctl launch "$DEVICE_UDID" com.hkbu.CareerFairLoginApp
+
         # Wait for app to load
         sleep 5
-        
+
         # Create screenshots directory
         mkdir -p screenshots
-        
+
         # Take screenshot of the app
-        xcrun simctl io "$DEVICE_ID" screenshot screenshots/login-screen.png
-        
+        xcrun simctl io "$DEVICE_UDID" screenshot screenshots/login-screen.png
+
         # Wait a bit more and take another screenshot
         sleep 2
-        xcrun simctl io "$DEVICE_ID" screenshot screenshots/app-running.png
-        
+        xcrun simctl io "$DEVICE_UDID" screenshot screenshots/app-running.png
+
         echo "Screenshots saved!"
         ls -la screenshots/
         

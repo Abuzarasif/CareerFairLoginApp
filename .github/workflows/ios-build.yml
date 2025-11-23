@@ -146,11 +146,18 @@ jobs:
           echo "Simulator is booted and ready"
         fi
         
+    - name: Clean Build Directory
+      run: |
+        echo "Cleaning build directory..."
+        rm -rf ./build
+        mkdir -p ./build
+        
     - name: List Available Destinations
       run: |
         echo "=== Available destinations for scheme ==="
         xcodebuild -project CareerFairLoginApp.xcodeproj \
           -scheme CareerFairLoginApp \
+          -sdk iphonesimulator \
           -showdestinations || true
         
     - name: Build App
@@ -160,7 +167,8 @@ jobs:
         SDK_PATH=$(xcrun --show-sdk-path --sdk iphonesimulator)
         echo "Using SDK: $SDK_PATH"
         
-        xcodebuild clean build \
+        # Build without clean (we cleaned manually)
+        xcodebuild build \
           -project CareerFairLoginApp.xcodeproj \
           -scheme CareerFairLoginApp \
           -sdk iphonesimulator \
@@ -169,7 +177,8 @@ jobs:
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
           ARCHS=arm64 \
-          VALID_ARCHS=arm64
+          VALID_ARCHS=arm64 \
+          ONLY_ACTIVE_ARCH=NO
         
     - name: Install App on Simulator
       run: |

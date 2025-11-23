@@ -1,0 +1,15 @@
+name: CareerFairLoginApp
+options:
+  bundleIdPrefix: com.hkbu
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  CareerFairLoginApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: CareerFairLoginApp
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.hkbu.CareerFairLoginApp
+      INFOPLIST_FILE: CareerFairLoginApp/Info.plist
+      SWIFT_VERSION: "5.0"

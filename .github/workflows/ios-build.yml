@@ -162,23 +162,84 @@ jobs:
         
     - name: Build App
       run: |
-        # Use SDK directly instead of destination (more reliable)
-        echo "Building app for iOS Simulator using SDK..."
+        # Get SDK path
         SDK_PATH=$(xcrun --show-sdk-path --sdk iphonesimulator)
         echo "Using SDK: $SDK_PATH"
         
-        # Build without clean (we cleaned manually)
-        xcodebuild build \
-          -project CareerFairLoginApp.xcodeproj \
+        # List all available destinations
+        echo "=== All available destinations ==="
+        xcodebuild -project CareerFairLoginApp.xcodeproj \
           -scheme CareerFairLoginApp \
           -sdk iphonesimulator \
-          -derivedDataPath ./build \
-          CODE_SIGN_IDENTITY="" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO \
-          ARCHS=arm64 \
-          VALID_ARCHS=arm64 \
-          ONLY_ACTIVE_ARCH=NO
+          -showdestinations 2>&1 | head -20
+        
+        # Try to get the first available simulator destination
+        DEST_LINE=$(xcodebuild -project CareerFairLoginApp.xcodeproj \
+          -scheme CareerFairLoginApp \
+          -sdk iphonesimulator \
+          -showdestinations 2>&1 | grep "iOS Simulator" | head -1)
+        
+        echo "Selected destination line: $DEST_LINE"
+        
+        if [ -z "$DEST_LINE" ]; then
+          echo "ERROR: No iOS Simulator destinations found!"
+          echo "Trying alternative build method..."
+          # Fallback: try building with just the SDK
+          xcodebuild -project CareerFairLoginApp.xcodeproj \
+            -scheme CareerFairLoginApp \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath ./build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=NO \
+            build 2>&1 || {
+              echo "Build failed, but checking if app was created anyway..."
+              find ./build -name "*.app" -type d || true
+              exit 1
+            }
+        else
+          # Extract destination ID from the line
+          DEST_ID=$(echo "$DEST_LINE" | sed -n 's/.*id:\([A-F0-9-]*\).*/\1/p' | head -1)
+          if [ -z "$DEST_ID" ]; then
+            # Try extracting name instead
+            DEST_NAME=$(echo "$DEST_LINE" | sed -n 's/.*name:\([^,}]*\).*/\1/p' | head -1 | xargs)
+            if [ -n "$DEST_NAME" ]; then
+              echo "Using destination name: $DEST_NAME"
+              xcodebuild build \
+                -project CareerFairLoginApp.xcodeproj \
+                -scheme CareerFairLoginApp \
+                -destination "platform=iOS Simulator,name=$DEST_NAME" \
+                -derivedDataPath ./build \
+                CODE_SIGN_IDENTITY="" \
+                CODE_SIGNING_REQUIRED=NO \
+                CODE_SIGNING_ALLOWED=NO
+            else
+              echo "Could not parse destination, using generic..."
+              xcodebuild -project CareerFairLoginApp.xcodeproj \
+                -scheme CareerFairLoginApp \
+                -sdk iphonesimulator \
+                -configuration Debug \
+                -derivedDataPath ./build \
+                CODE_SIGN_IDENTITY="" \
+                CODE_SIGNING_REQUIRED=NO \
+                CODE_SIGNING_ALLOWED=NO \
+                build
+            fi
+          else
+            echo "Using destination ID: $DEST_ID"
+            xcodebuild build \
+              -project CareerFairLoginApp.xcodeproj \
+              -scheme CareerFairLoginApp \
+              -destination "platform=iOS Simulator,id=$DEST_ID" \
+              -derivedDataPath ./build \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO
+          fi
+        fi
         
     - name: Install App on Simulator
       run: |

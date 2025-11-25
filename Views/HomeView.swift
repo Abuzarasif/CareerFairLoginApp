@@ -2,6 +2,53 @@ import SwiftUI
 
 struct HomeView: View {
     
+    var body: some View {
+        TabView {
+            ActivityScheduleView()
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("Activities")
+                }
+            
+            ExhibitorDirectoryView()
+                .tabItem {
+                    Image(systemName: "building.2.fill")
+                    Text("Exhibitors")
+                }
+            
+            InteractiveFloorPlanView()
+                .tabItem {
+                    Image(systemName: "map")
+                    Text("Floor Plan")
+                }
+            
+            StudentPreparatoryKitView()
+                .tabItem {
+                    Image(systemName: "doc.richtext")
+                    Text("Prep Kit")
+                }
+            
+            HomeSummaryView()
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Home")
+                }
+            
+            // Edit profile tab reuses the onboarding flow so users can
+            // update their answers to the original questions at any time.
+            OnboardingView()
+                .tabItem {
+                    Image(systemName: "person.crop.circle")
+                    Text("Profile")
+                }
+        }
+    }
+}
+
+// MARK: - Existing Home Content moved into a separate view
+
+struct HomeSummaryView: View {
+    
     @EnvironmentObject private var appState: AppState
     @State private var showWelcomeAlert: Bool = true
     
@@ -24,6 +71,12 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             VStack(alignment: .leading, spacing: 20) {
+                HStack {
+                    Spacer()
+                    StampHeaderView(compact: true)
+                        .environmentObject(appState)
+                }
+                
                 Text("Career Fair 2026")
                     .font(.largeTitle)
                     .fontWeight(.bold)

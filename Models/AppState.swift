@@ -8,6 +8,14 @@ enum AppScreen {
     case home
 }
 
+// MARK: - Stamp Types
+
+enum StampType {
+    case blue      // Exhibitor-related stamps (to be used on Exhibitor Directory page)
+    case green     // Exhibitor-related stamps (to be used on Exhibitor Directory page)
+    case orange    // Activity-related stamps (Activity Schedule)
+}
+
 // MARK: - User Profile Model
 
 struct UserProfile {
@@ -91,6 +99,51 @@ struct CareerInterestOptions {
 final class AppState: ObservableObject {
     @Published var currentScreen: AppScreen = .login
     @Published var profile: UserProfile = UserProfile()
+    @Published var hasCompletedEvaluation: Bool = false
+    
+    // Set of unique IDs representing activities for which the user has
+    // already collected an orange stamp.
+    @Published private(set) var orangeActivityStampIDs: Set<String> = []
+    
+    // Placeholder sets for future exhibitor-based stamps.
+    @Published private(set) var blueExhibitorStampIDs: Set<String> = []
+    @Published private(set) var greenExhibitorStampIDs: Set<String> = []
+    
+    // Computed counts used by the progress bar UI.
+    var orangeStampCount: Int { orangeActivityStampIDs.count }
+    var blueStampCount: Int { blueExhibitorStampIDs.count }
+    var greenStampCount: Int { greenExhibitorStampIDs.count }
+    var totalStampCount: Int { orangeStampCount + blueStampCount + greenStampCount }
+    
+    // MARK: - Stamp Collection Helpers
+    
+    /// Adds an orange stamp for the given activity if it hasn't been collected yet.
+    /// - Returns: `true` if a new stamp was added, `false` if it was already collected.
+    @discardableResult
+    func collectOrangeStamp(for activityID: String) -> Bool {
+        let beforeCount = orangeActivityStampIDs.count
+        orangeActivityStampIDs.insert(activityID)
+        return orangeActivityStampIDs.count > beforeCount
+    }
+    
+    /// Adds a blue or green stamp for a given exhibitor. Enforces uniqueness per exhibitor ID.
+    /// - Returns: `true` if a new stamp was added, `false` if it was already collected.
+    @discardableResult
+    func collectExhibitorStamp(for exhibitorID: String, type: StampType) -> Bool {
+        switch type {
+        case .blue:
+            let before = blueExhibitorStampIDs.count
+            blueExhibitorStampIDs.insert(exhibitorID)
+            return blueExhibitorStampIDs.count > before
+        case .green:
+            let before = greenExhibitorStampIDs.count
+            greenExhibitorStampIDs.insert(exhibitorID)
+            return greenExhibitorStampIDs.count > before
+        case .orange:
+            // Orange stamps are activity-based; use `collectOrangeStamp` instead.
+            return false
+        }
+    }
 }
 
 

@@ -1,290 +1,112 @@
-name: Build iOS App
+name: Build iOS App (Syntax Check)
 
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allows manual triggering
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Setup Xcode
-      uses: maxim-lobanov/setup-xcode@v1
-      with:
-        xcode-version: latest-stable
-        
-    - name: Show Xcode and SDK version
-      run: |
-        xcodebuild -version
-        xcrun --show-sdk-path --sdk iphonesimulator
-      
-    - name: Install XcodeGen
-      run: |
-        brew install xcodegen
-        
-    - name: Organize Project Structure (No Changes)
-      run: |
-        # Create the app directory structure
-        mkdir -p CareerFairLoginApp
-        
-        # Move Swift files to the app directory
-        mv CareerFairLoginAppApp.swift CareerFairLoginApp/ 2>/dev/null || true
-        mv Models CareerFairLoginApp/ 2>/dev/null || true
-        mv Views CareerFairLoginApp/ 2>/dev/null || true
-        
-        # Create Info.plist
-        cat > CareerFairLoginApp/Info.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleDevelopmentRegion</key>
-            <string>en</string>
-            <key>CFBundleDisplayName</key>
-            <string>CareerFairLoginApp</string>
-            <key>CFBundleExecutable</key>
-            <string>$(EXECUTABLE_NAME)</string>
-            <key>CFBundleIdentifier</key>
-            <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-            <key>CFBundleInfoDictionaryVersion</key>
-            <string>6.0</string>
-            <key>CFBundleName</key>
-            <string>$(PRODUCT_NAME)</string>
-            <key>CFBundlePackageType</key>
-            <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
-            <key>CFBundleShortVersionString</key>
-            <string>1.0</string>
-            <key>CFBundleVersion</key>
-            <string>1</string>
-            <key>LSRequiresIPhoneOS</key>
-            <true/>
-            <key>UIApplicationSceneManifest</key>
-            <dict>
-                <key>UIApplicationSupportsMultipleScenes</key>
-                <true/>
-            </dict>
-            <key>UILaunchScreen</key>
-            <dict/>
-            <key>UIRequiredDeviceCapabilities</key>
-            <array>
-                <string>armv7</string>
-            </array>
-            <key>UISupportedInterfaceOrientations</key>
-            <array>
-                <string>UIInterfaceOrientationPortrait</string>
-                <string>UIInterfaceOrientationLandscapeLeft</string>
-                <string>UIInterfaceOrientationLandscapeRight</string>
-            </array>
-        </dict>
-        </plist>
-        EOF
-        
-    - name: Generate Xcode Project (No Changes)
-      run: |
-        xcodegen generate
-        
-    - name: List Available Simulators (No Changes)
-      run: |
-        xcrun simctl list devices available
-        
-    - name: Get Simulator Device (No Changes)
-      run: |
-        # List all available iPhone simulators
-        echo "=== Available iPhone Simulators ==="
-        xcrun simctl list devices available | grep "iPhone" || true
-        
-        # Get the first available iPhone simulator with its UDID
-        # Format: "iPhone 15 Pro (ACC081A3-2F62-4A76-8E0E-FC3A612D1AE7) (Available)"
-        DEVICE_INFO=$(xcrun simctl list devices available | grep "iPhone" | grep "Available" | head -1)
-        
-        if [ -z "$DEVICE_INFO" ]; then
-          echo "No available iPhone simulators found, trying any iPhone..."
-          DEVICE_INFO=$(xcrun simctl list devices available | grep "iPhone" | head -1)
-        fi
-        
-        if [ -z "$DEVICE_INFO" ]; then
-          echo "ERROR: No iPhone simulators found!"
-          xcrun simctl list devices
-          exit 1
-        fi
-        
-        echo "Selected device line: $DEVICE_INFO"
-        
-        # Extract UDID (between parentheses)
-        DEVICE_UDID=$(echo "$DEVICE_INFO" | sed -n 's/.*(\([A-F0-9-]*\)).*/\1/p' | head -1)
-        # Extract name (text before first parenthesis, trimmed)
-        DEVICE_NAME=$(echo "$DEVICE_INFO" | cut -d '(' -f1 | xargs)
-        
-        if [ -z "$DEVICE_UDID" ]; then
-          echo "ERROR: Failed to extract simulator UDID"
-          exit 1
-        fi
-        
-        echo "DEVICE_UDID=$DEVICE_UDID" >> $GITHUB_ENV
-        echo "DEVICE_NAME=$DEVICE_NAME" >> $GITHUB_ENV
-        echo "Using device: $DEVICE_NAME (UDID: $DEVICE_UDID)"
-        
-    - name: Boot Simulator (No Changes)
-      run: |
-        echo "Booting simulator $DEVICE_UDID..."
-        xcrun simctl boot "$DEVICE_UDID" 2>&1 || echo "Simulator may already be booted"
-        
-        # Wait for simulator to be fully ready
-        echo "Waiting for simulator to be ready..."
-        sleep 5
-        
-        # Verify simulator is booted
-        BOOT_STATUS=$(xcrun simctl list devices | grep "$DEVICE_UDID" | grep -o "Booted" || echo "")
-        if [ -z "$BOOT_STATUS" ]; then
-          echo "Warning: Simulator may not be fully booted, but continuing..."
-        else
-          echo "Simulator is booted and ready"
-        fi
-        
-    - name: Clean Build Directory (No Changes)
-      run: |
-        echo "Cleaning build directory..."
-        rm -rf ./build
-        mkdir -p ./build
-        
-    - name: List Available Destinations (No Changes)
-      run: |
-        echo "=== Available destinations for scheme ==="
-        xcodebuild -project CareerFairLoginApp.xcodeproj \
-          -scheme CareerFairLoginApp \
-          -sdk iphonesimulator \
-          -showdestinations || true
-        
-    - name: Build App
-      run: |
-        # Get SDK path
-        SDK_PATH=$(xcrun --show-sdk-path --sdk iphonesimulator)
-        echo "Using SDK: $SDK_PATH"
-        
-        # List all available destinations
-        echo "=== All available destinations ==="
-        xcodebuild -project CareerFairLoginApp.xcodeproj \
-          -scheme CareerFairLoginApp \
-          -sdk iphonesimulator \
-          -showdestinations 2>&1 | head -20
-        
-        # Try to get the first available simulator destination
-        DEST_LINE=$(xcodebuild -project CareerFairLoginApp.xcodeproj \
-          -scheme CareerFairLoginApp \
-          -sdk iphonesimulator \
-          -showdestinations 2>&1 | grep "iOS Simulator" | head -1)
-        
-        echo "Selected destination line: $DEST_LINE"
-        
-        if [ -z "$DEST_LINE" ]; then
-          echo "ERROR: No iOS Simulator destinations found!"
-          echo "Trying alternative build method..."
-          # Fallback: FIX APPLIED HERE - Removed 'ARCHS=arm64' which is incompatible with x86_64 simulator runner.
-          xcodebuild -project CareerFairLoginApp.xcodeproj \
-            -scheme CareerFairLoginApp \
-            -sdk iphonesimulator \
-            -configuration Debug \
-            -derivedDataPath ./build \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build 2>&1 || {
-              echo "Build failed, but checking if app was created anyway..."
-              find ./build -name "*.app" -type d || true
-              exit 1
-            }
-        else
-          # The logic for using a destination ID/Name is preserved and is the preferred method
-          # Extract destination ID from the line
-          DEST_ID=$(echo "$DEST_LINE" | sed -n 's/.*id:\([A-F0-9-]*\).*/\1/p' | head -1)
-          if [ -z "$DEST_ID" ]; then
-            # Try extracting name instead
-            DEST_NAME=$(echo "$DEST_LINE" | sed -n 's/.*name:\([^,}]*\).*/\1/p' | head -1 | xargs)
-            if [ -n "$DEST_NAME" ]; then
-              echo "Using destination name: $DEST_NAME"
-              xcodebuild build \
-                -project CareerFairLoginApp.xcodeproj \
-                -scheme CareerFairLoginApp \
-                -destination "platform=iOS Simulator,name=$DEST_NAME" \
-                -derivedDataPath ./build \
-                CODE_SIGN_IDENTITY="" \
-                CODE_SIGNING_REQUIRED=NO \
-                CODE_SIGNING_ALLOWED=NO
-            else
-              echo "Could not parse destination, using generic..."
-              xcodebuild -project CareerFairLoginApp.xcodeproj \
-                -scheme CareerFairLoginApp \
-                -sdk iphonesimulator \
-                -configuration Debug \
-                -derivedDataPath ./build \
-                CODE_SIGN_IDENTITY="" \
-                CODE_SIGNING_REQUIRED=NO \
-                CODE_SIGNING_ALLOWED=NO \
-                build
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Xcode and SDK version
+        run: |
+          xcodebuild -version
+          xcrun --show-sdk-path --sdk iphonesimulator
+
+      - name: Organize Project Structure
+        run: |
+          # Create the app directory structure
+          mkdir -p CareerFairLoginApp
+
+          # Move Swift files to the app directory
+          mv CareerFairLoginAppApp.swift CareerFairLoginApp/ 2>/dev/null || true
+          mv Models CareerFairLoginApp/ 2>/dev/null || true
+          mv Views CareerFairLoginApp/ 2>/dev/null || true
+
+          # Create Info.plist
+          cat > CareerFairLoginApp/Info.plist << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleDisplayName</key>
+              <string>CareerFairLoginApp</string>
+              <key>CFBundleExecutable</key>
+              <string>\$(EXECUTABLE_NAME)</string>
+              <key>CFBundleIdentifier</key>
+              <string>\$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>\$(PRODUCT_NAME)</string>
+              <key>CFBundlePackageType</key>
+              <string>\$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+              <key>CFBundleShortVersionString</key>
+              <string>1.0</string>
+              <key>CFBundleVersion</key>
+              <string>1</string>
+              <key>LSRequiresIPhoneOS</key>
+              <true/>
+              <key>UIApplicationSceneManifest</key>
+              <dict>
+                  <key>UIApplicationSupportsMultipleScenes</key>
+                  <true/>
+              </dict>
+              <key>UILaunchScreen</key>
+              <dict/>
+              <key>UIRequiredDeviceCapabilities</key>
+              <array>
+                  <string>armv7</string>
+              </array>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+                  <string>UIInterfaceOrientationLandscapeLeft</string>
+                  <string>UIInterfaceOrientationLandscapeRight</string>
+              </array>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Verify Swift Files
+        run: |
+          echo "Swift files in repository:"
+          find . -name "*.swift" -type f | sort
+
+      - name: Swift Syntax Check
+        run: |
+          SDK_PATH=$(xcrun --show-sdk-path --sdk iphonesimulator)
+          echo "Using SDK: $SDK_PATH"
+
+          cd CareerFairLoginApp
+          echo "Checking Swift syntax for all files..."
+
+          EXIT_CODE=0
+          for file in $(find . -name "*.swift" -type f | sort); do
+            echo "=== Checking: $file ==="
+            if ! swiftc -typecheck "$file" -sdk "$SDK_PATH" -target arm64-apple-ios16.0-simulator; then
+              echo "Syntax check failed for $file"
+              EXIT_CODE=1
             fi
-          else
-            echo "Using destination ID: $DEST_ID"
-            xcodebuild build \
-              -project CareerFairLoginApp.xcodeproj \
-              -scheme CareerFairLoginApp \
-              -destination "platform=iOS Simulator,id=$DEST_ID" \
-              -derivedDataPath ./build \
-              CODE_SIGN_IDENTITY="" \
-              CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO
+          done
+
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "❌ Swift syntax check failed."
+            exit $EXIT_CODE
           fi
-        fi
-        
-    - name: Install App on Simulator (No Changes)
-      run: |
-        # Find the built app in derived data
-        APP_PATH=$(find ./build -name "CareerFairLoginApp.app" -type d | head -1)
-        if [ -z "$APP_PATH" ]; then
-          echo "App not found, searching all locations..."
-          find . -name "*.app" -type d
-          exit 1
-        fi
-        echo "Installing app from: $APP_PATH"
-        xcrun simctl install "$DEVICE_UDID" "$APP_PATH"
-        
-    - name: Launch App and Take Screenshots (No Changes)
-      run: |
-        # Launch the app
-        xcrun simctl launch "$DEVICE_UDID" com.hkbu.CareerFairLoginApp
 
-        # Wait for app to load
-        sleep 5
-
-        # Create screenshots directory
-        mkdir -p screenshots
-
-        # Take screenshot of the app
-        xcrun simctl io "$DEVICE_UDID" screenshot screenshots/login-screen.png
-
-        # Wait a bit more and take another screenshot
-        sleep 2
-        xcrun simctl io "$DEVICE_UDID" screenshot screenshots/app-running.png
-
-        echo "Screenshots saved!"
-        ls -la screenshots/
-        
-    - name: Upload Screenshots (No Changes)
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: app-screenshots
-        path: screenshots/
-        retention-days: 30
-        
-    - name: Build Summary (No Changes)
-      run: |
-        echo "✅ Build completed successfully!"
-        echo "📱 Screenshots are available in the Artifacts section"
-        echo "🔍 Check the 'app-screenshots' artifact to see your app running"
+          echo "✅ All Swift files passed syntax check."

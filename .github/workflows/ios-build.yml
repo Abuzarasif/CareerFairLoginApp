@@ -119,14 +119,27 @@ jobs:
 
       - name: Find Simulator Destination
         run: |
+          echo "=== xcodebuild -showdestinations output (filtered) ==="
+          xcodebuild -project CareerFairLoginApp.xcodeproj \
+            -scheme CareerFairLoginApp \
+            -sdk iphonesimulator \
+            -showdestinations 2>&1 | grep "platform:iOS Simulator" || true
+
+          # Pick the first real simulator destination that has an 'id:' field.
           DEST_LINE=$(xcodebuild -project CareerFairLoginApp.xcodeproj \
             -scheme CareerFairLoginApp \
             -sdk iphonesimulator \
-            -showdestinations 2>&1 | grep "iOS Simulator" | head -1)
+            -showdestinations 2>&1 | grep "platform:iOS Simulator" | grep "id:" | head -1)
 
           if [ -z "$DEST_LINE" ]; then
-            echo "ERROR: Could not find iOS Simulator destination"
-            exit 1
+            echo "ERROR: Could not find a specific iOS Simulator destination with an id."
+            echo "Full destination list:"
+            xcodebuild -project CareerFairLoginApp.xcodeproj \
+              -scheme CareerFairLoginApp \
+              -sdk iphonesimulator \
+              -showdestinations 2>&1 || true
+            # We won't fail here; later steps will fall back to a generic destination.
+          fi
           fi
 
           DEST_ID=$(echo "$DEST_LINE" | sed -n 's/.*id:\([A-F0-9-]*\).*/\1/p' | head -1)
@@ -143,10 +156,8 @@ jobs:
 
           if [ -n "$DEST_ID" ]; then
             DEST_SPEC="platform=iOS Simulator,id=$DEST_ID"
-          elif [ -n "$DEST_NAME" ]; then
-            DEST_SPEC="platform=iOS Simulator,name=$DEST_NAME"
           else
-            echo "Warning: No specific simulator found, using generic iOS Simulator destination."
+            echo "Warning: No simulator ID available, using a generic iOS Simulator destination."
             DEST_SPEC="generic/platform=iOS Simulator"
           fi
 

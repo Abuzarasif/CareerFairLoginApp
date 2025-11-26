@@ -138,10 +138,24 @@ jobs:
 
       - name: Build App
         run: |
+          echo "DEST_ID=$DEST_ID"
+          echo "DEST_NAME=$DEST_NAME"
+
+          if [ -n "$DEST_ID" ]; then
+            DEST_SPEC="platform=iOS Simulator,id=$DEST_ID"
+          elif [ -n "$DEST_NAME" ]; then
+            DEST_SPEC="platform=iOS Simulator,name=$DEST_NAME"
+          else
+            echo "Warning: No specific simulator found, using generic iOS Simulator destination."
+            DEST_SPEC="generic/platform=iOS Simulator"
+          fi
+
+          echo "Using destination specifier: $DEST_SPEC"
+
           xcodebuild clean build \
             -project CareerFairLoginApp.xcodeproj \
             -scheme CareerFairLoginApp \
-            -destination "platform=iOS Simulator,id=$DEST_ID" \
+            -destination "$DEST_SPEC" \
             -derivedDataPath ./build \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \

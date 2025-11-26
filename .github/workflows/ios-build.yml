@@ -87,26 +87,24 @@ jobs:
           echo "Swift files in repository:"
           find . -name "*.swift" -type f | sort
 
-      - name: Swift Syntax Check
+      - name: Swift Syntax Check (all files together)
         run: |
           SDK_PATH=$(xcrun --show-sdk-path --sdk iphonesimulator)
           echo "Using SDK: $SDK_PATH"
 
           cd CareerFairLoginApp
-          echo "Checking Swift syntax for all files..."
+          echo "Checking Swift syntax for all Swift files in a single compilation..."
 
-          EXIT_CODE=0
-          for file in $(find . -name "*.swift" -type f | sort); do
-            echo "=== Checking: $file ==="
-            if ! swiftc -typecheck "$file" -sdk "$SDK_PATH" -target arm64-apple-ios16.0-simulator; then
-              echo "Syntax check failed for $file"
-              EXIT_CODE=1
-            fi
-          done
+          FILES=$(find . -name "*.swift" -type f | sort)
+          echo "Files:"
+          echo "$FILES"
 
-          if [ "$EXIT_CODE" -ne 0 ]; then
-            echo "❌ Swift syntax check failed."
-            exit $EXIT_CODE
-          fi
+          # Use -parse-as-library so that the @main App struct is allowed while
+          # still type-checking the whole target as one module.
+          swiftc -typecheck \
+            -sdk "$SDK_PATH" \
+            -target arm64-apple-ios16.0-simulator \
+            -parse-as-library \
+            $FILES
 
-          echo "✅ All Swift files passed syntax check."
+          echo "✅ All Swift files passed combined syntax check."

@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 // MARK: - Activity Model
 
@@ -206,7 +207,40 @@ struct ActivityDetailView: View {
     }
 }
 
-// MARK: - Mock QR Scanner UI (shared between Activities & Exhibitors)
+// MARK: - Camera-backed QR Scanner UI (shared between Activities & Exhibitors)
+
+/// Simple camera preview used to simulate QR scanning. It opens the device camera
+/// but does not attempt to decode QR codes – tapping the scan button simply shows
+/// this view.
+struct CameraPreviewView: UIViewRepresentable {
+    
+    final class VideoPreviewView: UIView {
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+    }
+    
+    func makeUIView(context: Context) -> VideoPreviewView {
+        let view = VideoPreviewView()
+        let session = AVCaptureSession()
+        session.sessionPreset = .high
+        
+        if let device = AVCaptureDevice.default(for: .video),
+           let input = try? AVCaptureDeviceInput(device: device),
+           session.canAddInput(input) {
+            session.addInput(input)
+        }
+        
+        view.videoPreviewLayer.session = session
+        view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        session.startRunning()
+        
+        return view
+    }
+    
+    func updateUIView(_ uiView: VideoPreviewView, context: Context) {
+        // Nothing to update dynamically.
+    }
+}
 
 struct QRScannerMockView: View {
     @Environment(\.dismiss) private var dismiss
@@ -214,27 +248,29 @@ struct QRScannerMockView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.black.opacity(0.9)
+                Color.black
                     .ignoresSafeArea()
                 
                 VStack(spacing: 24) {
-                    Text("QR Scanner (Prototype)")
+                    Text("QR Scanner")
                         .font(.title2)
                         .foregroundColor(.white)
                     
                     ZStack {
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.green, lineWidth: 3)
+                        CameraPreviewView()
                             .frame(width: 260, height: 260)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .stroke(Color.green, lineWidth: 3)
+                            )
                         
-                        Image(systemName: "qrcode.viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 120, height: 120)
-                            .foregroundColor(.green)
+                        Image(systemName: "viewfinder")
+                            .font(.system(size: 60))
+                            .foregroundColor(.white.opacity(0.7))
                     }
                     
-                    Text("Point your camera at the activity QR code.\nIn this simulator, scanning is simulated.")
+                    Text("Camera is open to simulate QR scanning.\nNo real scan is performed in this demo.")
                         .multilineTextAlignment(.center)
                         .font(.footnote)
                         .foregroundColor(.white.opacity(0.8))

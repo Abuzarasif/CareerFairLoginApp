@@ -78,6 +78,8 @@ jobs:
                   <string>UIInterfaceOrientationLandscapeLeft</string>
                   <string>UIInterfaceOrientationLandscapeRight</string>
               </array>
+              <key>NSCameraUsageDescription</key>
+              <string>Camera access is used to simulate QR code scanning during the career fair.</string>
           </dict>
           </plist>
           EOF

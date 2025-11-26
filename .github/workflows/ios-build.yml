@@ -115,12 +115,10 @@ jobs:
 
       - name: Generate Xcode Project
         run: |
-          cd CareerFairLoginApp
           xcodegen generate
 
       - name: Find Simulator Destination
         run: |
-          cd CareerFairLoginApp
           DEST_LINE=$(xcodebuild -project CareerFairLoginApp.xcodeproj \
             -scheme CareerFairLoginApp \
             -sdk iphonesimulator \
@@ -140,7 +138,6 @@ jobs:
 
       - name: Build App
         run: |
-          cd CareerFairLoginApp
           xcodebuild clean build \
             -project CareerFairLoginApp.xcodeproj \
             -scheme CareerFairLoginApp \
@@ -157,7 +154,6 @@ jobs:
 
       - name: Install App on Simulator
         run: |
-          cd CareerFairLoginApp
           APP_PATH=$(find ./build -name "CareerFairLoginApp.app" -type d | head -1)
           if [ -z "$APP_PATH" ]; then
             echo "App not found in derived data"
@@ -168,7 +164,6 @@ jobs:
 
       - name: Launch App and Take Screenshots
         run: |
-          cd CareerFairLoginApp
           mkdir -p screenshots
 
           xcrun simctl launch "$DEST_ID" com.hkbu.CareerFairLoginApp || true
@@ -187,5 +182,5 @@ jobs:
         if: always()
         with:
           name: app-screenshots
-          path: CareerFairLoginApp/screenshots
+          path: screenshots
           retention-days: 30

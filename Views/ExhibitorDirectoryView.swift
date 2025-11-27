@@ -94,13 +94,13 @@ struct ExhibitorDirectoryView: View {
                 }
                 .padding(10)
                 .background(Color(.secondarySystemBackground))
-                .cornerRadius(10)
+                .cornerRadius(12)
                 .padding(.horizontal)
-                .padding(.top, 8)
+                .padding(.top, 12)
                 
                 // Filters row
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         Menu {
                             Picker("Date Attendance", selection: $selectedDate) {
                                 ForEach(allDates, id: \.self) { date in
@@ -132,7 +132,7 @@ struct ExhibitorDirectoryView: View {
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 4)
+                    .padding(.vertical, 4)
                 }
                 
                 // Directory list
@@ -174,13 +174,13 @@ private struct ExhibitorRowView: View {
     let exhibitor: Exhibitor
     
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             ZStack {
                 Circle()
                     .fill(Color(.secondarySystemBackground))
                     .frame(width: 40, height: 40)
                 Text(exhibitor.initials)
-                    .font(.caption)
+                    .font(.callout)
                     .fontWeight(.bold)
             }
             
@@ -200,7 +200,7 @@ private struct ExhibitorRowView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 10)
     }
 }
 

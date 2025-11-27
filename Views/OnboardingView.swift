@@ -38,9 +38,13 @@ struct OnboardingView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         
-                        Text("Welcome to the Career Fair 2026 app! Personalize your experience by answering a few questions. Your choices will determine the features and reward levels you can access.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Welcome to the Career Fair 2026 app!")
+                            Text("Personalize your experience by answering a few questions.")
+                            Text("Your choices will determine the features and reward levels you can access.")
+                        }
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                     }
                     .padding(.top, 16)
                     

@@ -11,6 +11,8 @@ struct LoginView: View {
     // MARK: - UI State (pre-filled with hard-coded values)
     @State private var email: String = "21200130@life.hkbu.edu.hk"
     @State private var password: String = "Shadman12345"
+    @State private var showPassword: Bool = false
+    
     @State private var showAlert: Bool = false
     @State private var alertTitle: String = ""
     @State private var alertMessage: String = ""
@@ -21,101 +23,100 @@ struct LoginView: View {
                 Color(.systemBackground)
                     .ignoresSafeArea()
                 
-                VStack(spacing: 32) {
-                    
-                    // Top mail icon container
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color(.secondarySystemBackground))
-                            .frame(width: 90, height: 90)
+                ScrollView {
+                    VStack(spacing: 32) {
                         
-                        Image(systemName: "envelope.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 40, height: 30)
-                            .foregroundColor(.black)
-                    }
-                    .padding(.top, 40)
-                    
-                    // Email & Password fields
-                    VStack(spacing: 16) {
+                        Spacer().frame(height: 40)
                         
-                        // Email field
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Email")
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                        // Top mail icon container
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 24)
+                                .fill(Color(.secondarySystemBackground))
+                                .frame(width: 96, height: 96)
                             
-                            TextField("Email", text: $email)
-                                .keyboardType(.emailAddress)
-                                .autocapitalization(.none)
-                                .disableAutocorrection(true)
+                            Image(systemName: "envelope.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 40, height: 30)
+                                .foregroundColor(.black)
+                        }
+                        
+                        // Email & Password fields
+                        VStack(spacing: 20) {
+                            
+                            // Email field
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Email")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                
+                                TextField("your.email@life.hkbu.edu.hk", text: $email)
+                                    .keyboardType(.emailAddress)
+                                    .textInputAutocapitalization(.never)
+                                    .disableAutocorrection(true)
+                                    .padding()
+                                    .background(Color(.secondarySystemBackground))
+                                    .cornerRadius(12)
+                            }
+                            
+                            // Password field with eye toggle
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Password")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                
+                                HStack {
+                                    if showPassword {
+                                        TextField("Password", text: $password)
+                                    } else {
+                                        SecureField("Password", text: $password)
+                                    }
+                                    
+                                    Button(action: { showPassword.toggle() }) {
+                                        Image(systemName: showPassword ? "eye.slash" : "eye")
+                                            .foregroundColor(.gray)
+                                    }
+                                }
                                 .padding()
                                 .background(Color(.secondarySystemBackground))
                                 .cornerRadius(12)
+                            }
                         }
                         
-                        // Password field
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Password")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            
-                            SecureField("Password", text: $password)
+                        // Small "Forgot Password?" button under fields
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                alertTitle = "Forgot Password"
+                                alertMessage = "Password reset is not implemented in this demo app."
+                                showAlert = true
+                            }) {
+                                Text("Forgot Password?")
+                                    .font(.footnote)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        
+                        Spacer(minLength: 24)
+                        
+                        // Primary Log In button
+                        Button(action: validateCredentials) {
+                            Text("Log In")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color(.secondarySystemBackground))
+                                .background(Color.black)
                                 .cornerRadius(12)
                         }
+                        .padding(.top, 8)
+                        
+                        Spacer().frame(height: 40)
                     }
                     .padding(.horizontal, 32)
-                    
-                    // Small "Forgot Password?" label under fields
-                    HStack {
-                        Spacer()
-                        Text("Forgot Password?")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.horizontal, 32)
-                    
-                    Spacer()
-                    
-                    // Bottom main button (validates credentials)
-                    Button(action: validateCredentials) {
-                        Text("Forgot Password?")
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.black)
-                            .cornerRadius(12)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 40)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // Back button (left)
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        // Handle back action if needed
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .foregroundColor(.black)
-                    }
-                }
-                
-                // Menu button (right)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // Handle menu action if needed
-                    }) {
-                        Image(systemName: "line.3.horizontal")
-                            .foregroundColor(.black)
-                    }
-                }
-            }
+            .navigationBarHidden(true)
             .alert(isPresented: $showAlert) {
                 Alert(
                     title: Text(alertTitle),
